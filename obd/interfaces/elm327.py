@@ -229,21 +229,21 @@ class ELM327(object):
         self._at_command_mappings = [
 
             # Immutable
-            (re.compile("^ATE(?P<value>[0-1])$", re.IGNORECASE),        lambda val: self._immutable_setting(not self._echo_off, int(val))),
-            #(re.compile("^ATH(?P<value>[0-1])$", re.IGNORECASE),        lambda val: self._immutable_setting(self._print_headers, int(val))),
-            #(re.compile("^ATS(?P<value>[0-1])$", re.IGNORECASE),        lambda val: self._immutable_setting(0, int(val))),
+            (re.compile("^ATE(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self._immutable_setting(not self._echo_off, int(val))),
+            #(re.compile("^ATH(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self._immutable_setting(self._print_headers, int(val))),
+            #(re.compile("^ATS(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self._immutable_setting(0, int(val))),
 
             # Mutable
-            (re.compile("^ATAT(?P<value>[0-2])$", re.IGNORECASE),       self.set_adaptive_timing),
-            (re.compile("^ATR(?P<value>[0-1])$", re.IGNORECASE),        self.set_expect_responses),
-            (re.compile("^ATD$", re.IGNORECASE),                        self.restore_defaults),
-            (re.compile("^ATWS$", re.IGNORECASE),                       self.warm_reset),
-            (re.compile("^ATZ$", re.IGNORECASE),                        self.warm_reset),  # Do not perform hard reset
-            (re.compile("^ATSH(?P<value>[0-9A-F]+)$", re.IGNORECASE),   self.set_header),
-            (re.compile("^ATSP(?P<value>[0-9A-C])$", re.IGNORECASE),    lambda val: self.set_protocol(None if val == "0" else val, verify=False)),
-            (re.compile("^ATST(?P<value>[0-9]{1,2})$", re.IGNORECASE),  self.set_response_timeout),
-            (re.compile("^ATCAF(?P<value>[0-1])$", re.IGNORECASE),      self.set_can_auto_format),
-            (re.compile("^ATCEA(?P<value>[0-9A-F]*)$", re.IGNORECASE),  self.set_can_extended_address),
+            (re.compile("^ATAT(?P<value>[0-2])$", re.IGNORECASE),         lambda val: self.set_adaptive_timing(int(val))),
+            (re.compile("^ATR(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self.set_expect_responses(int(val))),
+            (re.compile("^ATD$", re.IGNORECASE),                          self.restore_defaults),
+            (re.compile("^ATWS$", re.IGNORECASE),                         self.warm_reset),
+            (re.compile("^ATZ$", re.IGNORECASE),                          self.warm_reset),  # Do not perform hard reset
+            (re.compile("^ATSH(?P<value>[0-9A-F]+)$", re.IGNORECASE),     self.set_header),
+            (re.compile("^ATSP(?P<value>[0-9A-C])$", re.IGNORECASE),      lambda val: self.set_protocol(None if val == "0" else val, verify=False)),
+            (re.compile("^ATST(?P<value>[0-9A-F]{1,2})$", re.IGNORECASE), lambda val: self.set_response_timeout(int(val, 16))),
+            (re.compile("^ATCAF(?P<value>[0-1])$", re.IGNORECASE),        lambda val: self.set_can_auto_format(int(val))),
+            (re.compile("^ATCEA(?P<value>[0-9A-F]*)$", re.IGNORECASE),    self.set_can_extended_address),
         ]
 
         self._read_line_buffer = None
@@ -529,7 +529,7 @@ class ELM327(object):
             return
 
         try:
-            res = self.send("ATR" + str(int(value)))
+            res = self.send("ATR{:d}".format(value))
         except ELM327Error as err:
             raise ELM327Error("Unable to set expect responses '{:}': {:}".format(value, err), code=err.code)
 
@@ -544,14 +544,14 @@ class ELM327(object):
 
     def set_response_timeout(self, value):
         """
-        Set timeout to value x 4 ms. Default is 32 (equals 205 ms).
+        Set timeout to value x 4 ms. Default is 50 (hex 32) giving a time of approximately 200 msec.
         """
 
-        if value == self._runtime_settings.get("response_timeout", 32):
+        if value == self._runtime_settings.get("response_timeout", 50):
             return
 
         try:
-            res = self.send("ATST" + str(value))
+            res = self.send("ATST{:X}".format(value))
         except ELM327Error as err:
             raise ELM327Error("Unable to set response timeout '{:}': {:}".format(value, err), code=err.code)
 
@@ -580,7 +580,7 @@ class ELM327(object):
             return
 
         try:
-            res = self.send("ATAT" + str(value))
+            res = self.send("ATAT{:d}".format(value))
         except ELM327Error as err:
             raise ELM327Error("Unable to set adaptive timing '{:}': {:}".format(value, err), code=err.code)
 
@@ -632,7 +632,7 @@ class ELM327(object):
             return
 
         try:
-            res = self.send("ATCAF" + str(int(value)))
+            res = self.send("ATCAF{:d}".format(value))
         except ELM327Error as err:
             raise ELM327Error("Unable to set CAN automatic formatting '{:}': {:}".format(value, err), code=err.code)
 
@@ -655,7 +655,7 @@ class ELM327(object):
 
         if value:
             try:
-                res = self.send("ATCEA" + str(value))
+                res = self.send("ATCEA{:s}".format(value))
             except ELM327Error as err:
                 raise ELM327Error("Unable to set CAN extended address '{:}': {:}".format(value, err), code=err.code)
         else:

@@ -304,7 +304,7 @@ class STN11XX(ELM327):
             return
 
         try:
-            res = self.send("STCMM" + str(value))
+            res = self.send("STCMM{:d}".format(value))
         except ELM327Error as err:
             raise STN11XXError("Unable to set CAN monitoring mode '{:}': {:}".format(value, err), code=err.code)
 
@@ -488,7 +488,7 @@ class STN11XX(ELM327):
             if not add in self._runtime_settings.get("can_flow_control_filters", []):
 
                 try:                
-                    res = self.send("STFFCA{:}".format(add))
+                    res = self.send("STFFCA{:s}".format(add))
                 except ELM327Error as err:
                     raise STN11XXError("Unable to add CAN flow control filter '{:}': {:}".format(add, err), code=err.code)
 
@@ -519,7 +519,7 @@ class STN11XX(ELM327):
             if not add in self._runtime_settings.get("can_flow_control_id_pairs", []):
 
                 try:
-                    res = self.send("STCFCPA{:}".format(add))
+                    res = self.send("STCFCPA{:s}".format(add))
                 except ELM327Error as err:
                     raise STN11XXError("Unable to add CAN flow control ID pair '{:}': {:}".format(add, err), code=err.code)
 
