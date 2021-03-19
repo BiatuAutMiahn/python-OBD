@@ -268,7 +268,6 @@ class OBD(object):
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("Querying command: %s" % str(cmd))
 
-        # TODO: Append number of expected frames to command string to improve performance (avoid waiting for timeout)
         cmd_string = self.__build_command_string(cmd)
 
         try:
@@ -392,10 +391,14 @@ class OBD(object):
         """ assembles the appropriate command string """
         cmd_string = cmd.command
 
+        # Append explicitly defined frame count
+        if cmd.frames != None:
+            cmd_string += str(cmd.frames).encode()
+
         # if we know the number of frames that this command returns,
         # only wait for exactly that number. This avoids some harsh
         # timeouts from the ELM, thus speeding up queries.
-        if self.fast and cmd.fast and (cmd in self.__frame_counts):
+        elif self.fast and cmd.fast and (cmd in self.__frame_counts):
             cmd_string += str(self.__frame_counts[cmd]).encode()
 
         # if we sent this last time, just send a CR
