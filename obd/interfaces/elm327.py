@@ -82,32 +82,37 @@ class ISO_14230_4_fast(LegacyProtocol):
 class ISO_15765_4_11bit_500k(CANProtocol):
     NAME = "ISO 15765-4 (CAN 11/500)"
     ID = "6"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class ISO_15765_4_29bit_500k(CANProtocol):
     NAME = "ISO 15765-4 (CAN 29/500)"
     ID = "7"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 class ISO_15765_4_11bit_250k(CANProtocol):
     NAME = "ISO 15765-4 (CAN 11/250)"
     ID = "8"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class ISO_15765_4_29bit_250k(CANProtocol):
     NAME = "ISO 15765-4 (CAN 29/250)"
     ID = "9"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 class SAE_J1939(CANProtocol):
     NAME = "SAE J1939 (CAN 29/250)"
     ID = "A"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 
 ########################################################################
@@ -231,7 +236,6 @@ class ELM327(object):
             # Immutable
             (re.compile("^ATE(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self._immutable_setting(not self._echo_off, int(val))),
             #(re.compile("^ATH(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self._immutable_setting(self._print_headers, int(val))),
-            #(re.compile("^ATS(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self._immutable_setting(0, int(val))),
 
             # Mutable
             (re.compile("^ATAT(?P<value>[0-2])$", re.IGNORECASE),         lambda val: self.set_adaptive_timing(int(val))),
@@ -244,6 +248,8 @@ class ELM327(object):
             (re.compile("^ATST(?P<value>[0-9A-F]{1,2})$", re.IGNORECASE), lambda val: self.set_response_timeout(int(val, 16))),
             (re.compile("^ATCAF(?P<value>[0-1])$", re.IGNORECASE),        lambda val: self.set_can_auto_format(int(val))),
             (re.compile("^ATCEA(?P<value>[0-9A-F]*)$", re.IGNORECASE),    self.set_can_extended_address),
+            (re.compile("^ATCP(?P<value>[0-9A-F]{1,2})$", re.IGNORECASE), self.set_can_priority),
+            (re.compile("^ATS(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self.set_print_spaces(int(val))),
         ]
 
         self._read_line_buffer = None
@@ -432,8 +438,9 @@ class ELM327(object):
         return self._runtime_settings
 
 
-    def supported_protocols(self):
-        return self._SUPPORTED_PROTOCOLS
+    @classmethod
+    def supported_protocols(cls):
+        return cls.SUPPORTED_PROTOCOLS
 
 
     def protocol(self, verify=True):
@@ -673,6 +680,50 @@ class ELM327(object):
         self._runtime_settings["can_extended_address"] = value
 
 
+    def set_can_priority(self, value):
+        """
+        Set CAN priority bits of a 29-bit CAN ID. This command sets the five most significant bits of transmitted frames.
+        """
+
+        if value == self._runtime_settings.get("can_priority", None):
+            return
+
+        try:
+            res = self.send("ATCP{:s}".format(value))
+        except ELM327Error as err:
+            raise ELM327Error("Unable to set CAN priority '{:}': {:}".format(value, err), code=err.code)
+
+        if not self._is_ok(res):
+            raise ELM327Error("Invalid response when setting CAN priority '{:}': {:}".format(value, res), code=self._last(res))
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Changed CAN priority from '{:}' to '{:}'".format(self._runtime_settings.get("can_priority", None), value))
+
+        self._runtime_settings["can_priority"] = value
+
+
+    def set_print_spaces(self, value):
+        """
+        Turn printing of spaces in OBD responses on or off. To get better performance, turn spaces off. Default is True.
+        """
+
+        if value == self._runtime_settings.get("print_spaces", True):
+            return
+
+        try:
+            res = self.send("ATS{:d}".format(value))
+        except ELM327Error as err:
+            raise ELM327Error("Unable to set print spaces '{:}': {:}".format(value, err), code=err.code)
+
+        if not self._is_ok(res):
+            raise ELM327Error("Invalid response when setting print spaces '{:}': {:}".format(value, res), code=self._last(res))
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Changed print spaces from '{:}' to '{:}'".format(self._runtime_settings.get("print_spaces", None), value))
+
+        self._runtime_settings["print_spaces"] = value
+
+
     def query(self, cmd, header=None, parse=True, read_timeout=None):
         """
         Used to service all OBDCommands.
@@ -758,14 +809,18 @@ class ELM327(object):
 
         lines = self._read(timeout=read_timeout, interrupt_delay=interrupt_delay)
 
-        if logger.isEnabledFor(logging.DEBUG) and not lines:
-            logger.debug("Got no response on command: {:}".format(cmd))
+        if not lines:
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Got no response on command: {:}".format(cmd))
 
+            return lines
+
+        # Return raw response
         if raw_response:
             return lines
 
         # Filter out echo if present
-        if not self._echo_off and len(lines) > 0:
+        if not self._echo_off:
 
             # Sanity check if echo matches sent command
             if cmd != lines[0]:

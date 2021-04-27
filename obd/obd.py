@@ -37,7 +37,7 @@ from .__version__ import __version__
 from .interfaces import *
 from .commands import commands
 from .OBDResponse import OBDResponse
-from .utils import scan_serial, OBDStatus, OBDError
+from .utils import scan_serial, OBDStatus, OBDError, format_frame
 
 
 logger = logging.getLogger(__name__)
@@ -49,13 +49,14 @@ class OBD(object):
         with it's assorted commands/sensors.
     """
 
-    def __init__(self, portstr=None, baudrate=None, timeout=None, protocol=None, load_commands=True, fast=False, interface_cls=ELM327, status_callback=None):
+    def __init__(self, portstr=None, baudrate=None, timeout=None, protocol=None, load_commands=True, fast=False, interface_cls=ELM327, status_callback=None, reset_callback=None):
         self.interface = None
         self.supported_commands = set(commands.base_commands())
         self.fast = fast # global switch for disabling optimizations
         # TODO: Fast mode/last command cache is not always reset - this functionality should be moved to interface or removed completely
         self.__last_command = b"" # used for running the previous command with a CR
         self.__frame_counts = {} # keeps track of the number of return frames for each command
+        self.reset_callback = reset_callback
 
         logger.debug("======================= Python-OBD (v%s) =======================" % __version__)
         self.__connect(interface_cls, portstr, baudrate, timeout=timeout, protocol=protocol, status_callback=status_callback)
@@ -293,7 +294,7 @@ class OBD(object):
         return cmd(messages) # compute a response object
 
 
-    def send(self, msg_string, header=None, auto_format=False, expect_response=False, raw_response=False, echo=False):
+    def send(self, msg_string, header=None, auto_format=False, expect_response=False, raw_response=False, format_response=False, echo=False):
         """
             Low-level method that sends a raw message on bus.
         """
@@ -341,6 +342,11 @@ class OBD(object):
             # Remember to update last command
             self.__last_command = msg_string
 
+        # Format frames if requested
+        if format_response:
+            header_bits = getattr(self.interface._protocol, "HEADER_BITS", None)
+            lines = [format_frame(l, header_bits) for l in lines]
+
         return lines
 
 
@@ -385,6 +391,12 @@ class OBD(object):
             self.interface.reset()
         else:
             raise ValueError("Unsupported reset mode")
+
+        if self.reset_callback:
+            try:
+                self.reset_callback(mode.lower())
+            except:
+                logger.exception("Failed to trigger reset callback")
 
 
     def __build_command_string(self, cmd):

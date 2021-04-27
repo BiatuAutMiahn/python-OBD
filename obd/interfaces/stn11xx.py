@@ -66,102 +66,118 @@ class ISO_14230_fast(LegacyProtocol):
 class HSC_ISO_11898_11bit_500k(CANProtocol):
     NAME = "HS CAN (ISO 11898, 11bit, 500kbps, var DLC)"
     ID = "31"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class HSC_ISO_11898_29bit_500k(CANProtocol):
     NAME = "HS CAN (ISO 11898, 29bit, 500kbps, var DLC)"
     ID = "32"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 class HSC_ISO_15765_11bit_500k(CANProtocol):
     NAME = "HS CAN (ISO 15765, 11bit, 500kbps, DLC=8)"
     ID = "33"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class HSC_ISO_15765_29bit_500k(CANProtocol):
     NAME = "HS CAN (ISO 15765, 29bit, 500kbps, DLC=8)"
     ID = "34"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 class HSC_ISO_15765_11bit_250k(CANProtocol):
     NAME = "HS CAN (ISO 15765, 11bit, 250kbps, DLC=8)"
     ID = "35"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class HSC_ISO_15765_29bit_250k(CANProtocol):
     NAME = "HS CAN (ISO 15765, 29bit, 250kbps, DLC=8)"
     ID = "36"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 class HSC_J1939_11bit_250k(CANProtocol):
     NAME = "J1939 (11bit, 250kbps)"
     ID = "41"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class HSC_J1939_29bit_250k(CANProtocol):
     NAME = "J1939 (29bit, 250kbps)"
     ID = "42"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 # Medium Speed CAN
 
 class MSC_ISO_11898_11bit_125k(CANProtocol):
     NAME = "MS CAN (ISO 11898, 11bit, 125kbps, var DLC)"
     ID = "51"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class MSC_ISO_11898_29bit_125k(CANProtocol):
     NAME = "MS CAN (ISO 11898, 29bit, 125kbps, var DLC)"
     ID = "52"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 class MSC_ISO_15765_11bit_125k(CANProtocol):
     NAME = "MS CAN (ISO 15765, 11bit, 125kbps, DLC=8)"
     ID = "53"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class MSC_ISO_15765_29bit_125k(CANProtocol):
     NAME = "MS CAN (ISO 15765, 29bit, 125kbps, DLC=8)"
     ID = "54"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 # Single Wire CAN
 
 class SWC_ISO_11898_11bit_33k3(CANProtocol):
     NAME = "SW CAN (ISO 11898, 11bit, 33.3kbps, var DLC)"
     ID = "61"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class SWC_ISO_11898_29bit_33k3(CANProtocol):
     NAME = "SW CAN (ISO 11898, 29bit, 33.3kbps, var DLC)"
     ID = "62"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 class SWC_ISO_15765_11bit_33k3(CANProtocol):
     NAME = "SW CAN (ISO 15765, 11bit, 33.3kbps, DLC=8)"
     ID = "63"
+    HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=11)
+        CANProtocol.__init__(self, lines_0100)
 
 class SWC_ISO_15765_29bit_33k3(CANProtocol):
     NAME = "SW CAN (ISO 15765, 29bit, 33.3kbps, DLC=8)"
     ID = "64"
+    HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100, id_bits=29)
+        CANProtocol.__init__(self, lines_0100)
 
 
 ########################################################################
@@ -253,10 +269,11 @@ class STN11XX(ELM327):
         super(STN11XX, self).set_baudrate(baudrate)
 
 
-    def supported_protocols(self):
+    @classmethod
+    def supported_protocols(cls):
         ret = collections.OrderedDict()
-        ret.update(self.SUPPORTED_PROTOCOLS)
-        ret.update(self.STN_SUPPORTED_PROTOCOLS)
+        ret.update(cls.SUPPORTED_PROTOCOLS)
+        ret.update(cls.STN_SUPPORTED_PROTOCOLS)
 
         return ret
 
@@ -472,7 +489,6 @@ class STN11XX(ELM327):
     def can_flow_control_filters(self, clear=False, add=None):
 
         if clear:
-
             try:
                 res = self.send("STFFCC")
             except ELM327Error as err:
@@ -487,7 +503,7 @@ class STN11XX(ELM327):
             add = str(add).replace(" ", "").upper()
             if not add in self._runtime_settings.get("can_flow_control_filters", []):
 
-                try:                
+                try:
                     res = self.send("STFFCA{:s}".format(add))
                 except ELM327Error as err:
                     raise STN11XXError("Unable to add CAN flow control filter '{:}': {:}".format(add, err), code=err.code)
@@ -503,7 +519,6 @@ class STN11XX(ELM327):
     def can_flow_control_id_pairs(self, clear=False, add=None):
 
         if clear:
-
             try:
                 res = self.send("STCFCPC")
             except ELM327Error as err:
@@ -529,6 +544,37 @@ class STN11XX(ELM327):
                 self._runtime_settings.setdefault("can_flow_control_id_pairs", []).append(add)
 
         return self._runtime_settings.get("can_flow_control_id_pairs", [])
+
+
+    def j1939_pgn_filters(self, clear=False, add=None):
+
+        if clear:
+
+            try:
+                res = self.send("STFPGC")
+            except ELM327Error as err:
+                raise STN11XXError("Unable to clear J1939 PGN filters: {:}".format(err), code=err.code)
+
+            if not self._is_ok(res):
+                raise STN11XXError("Invalid response when clearing J1939 PGN filters: {:}".format(res), code=self._last(res))
+
+            self._runtime_settings["j1939_pgn_filters"] = []
+
+        if add:
+            add = str(add).replace(" ", "").upper()
+            if not add in self._runtime_settings.get("j1939_pgn_filters", []):
+
+                try:
+                    res = self.send("STFPGA{:s}".format(add))
+                except ELM327Error as err:
+                    raise STN11XXError("Unable to add J1939 PGN filter '{:}': {:}".format(add, err), code=err.code)
+
+                if not self._is_ok(res):
+                    raise STN11XXError("Invalid response when adding J1939 PGN filter '{:}': {:}".format(add, res), code=self._last(res))
+
+                self._runtime_settings.setdefault("j1939_pgn_filters", []).append(add)
+
+        return self._runtime_settings.get("j1939_pgn_filters", [])
 
 
     def _manual_protocol(self, ident, verify=False, baudrate=None):

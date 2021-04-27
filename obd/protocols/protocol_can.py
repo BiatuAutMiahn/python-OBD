@@ -49,10 +49,9 @@ class CANProtocol(Protocol):
     FRAME_TYPE_CF = 0x20  # consecutive frame(s) of multi-frame message
 
 
-    def __init__(self, lines_0100, id_bits):
+    def __init__(self, lines_0100):
         # this needs to be set FIRST, since the base
         # Protocol __init__ uses the parsing system.
-        self.id_bits = id_bits
         Protocol.__init__(self, lines_0100)
 
 
@@ -67,7 +66,7 @@ class CANProtocol(Protocol):
         # to:
         # 00 00 07 E8 06 41 00 BE 7F B8 13
 
-        if self.id_bits == 11:
+        if self.HEADER_BITS == 11:
             raw = "00000" + raw
 
         # Handle odd size frames and drop
@@ -94,7 +93,7 @@ class CANProtocol(Protocol):
 
 
         # read header information
-        if self.id_bits == 11:
+        if self.HEADER_BITS == 11:
             # Ex.
             #       [   ]
             # 00 00 07 E8 06 41 00 BE 7F B8 13
@@ -114,7 +113,7 @@ class CANProtocol(Protocol):
                 frame.tx_id = 0xF1  # made-up to mimic all other protocols
                 frame.rx_id = raw_bytes[3] & 0x07
 
-        else: # self.id_bits == 29:
+        else: # self.HEADER_BITS == 29:
             frame.priority  = raw_bytes[0]  # usually (always?) 0x18
             frame.addr_mode = raw_bytes[1]  # DB = functional, DA = physical
             frame.rx_id     = raw_bytes[2]  # 0x33 = broadcast (functional)

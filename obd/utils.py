@@ -34,6 +34,7 @@ import serial
 import errno
 import string
 import glob
+import re
 import sys
 import logging
 
@@ -191,6 +192,36 @@ def scan_serial():
             available.append(port)
 
     return available
+
+
+def parse_frame(line, header_bits, validate=True):
+
+    # First get rid of any spaces and null bytes
+    ret = re.sub(" |\x00", "", line)
+
+    if validate:
+        try:
+            int(ret, 16)
+        except ValueError:
+            return None, line  # No header
+
+    if header_bits != None:
+        if header_bits == 11:
+            return ret[:3], ret[3:]
+        elif header_bits == 29:
+            return ret[:8], ret[8:]
+        else:
+          raise ValueError("Unsupported header bits value {:}".format(header_bits))
+
+    return None, line  # No header
+
+
+def format_frame(line, header_bits, **kwargs):
+    header, data = parse_frame(line, header_bits, **kwargs)
+    if header != None:
+        return header + "#" + data
+    else:
+        return data
 
 
 class BufferedSerialReader:
