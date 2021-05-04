@@ -238,16 +238,17 @@ class STN11XX(ELM327):
     # going to be less picky about the time required to detect it.
     TRY_BAUDRATES = [9600, 2304000, 1152000, 1056000, 960000, 576000, 230400, 115200, 57600, 38400, 19200]
 
-    FILTER_TYPE_PASS = "PASS"
-    FILTER_TYPE_BLOCK = "BLOCK"
-    FILTER_TYPE_FLOW = "FLOW"
-    FILTER_TYPES = [FILTER_TYPE_PASS, FILTER_TYPE_BLOCK, FILTER_TYPE_FLOW]
+    FILTER_TYPE_ALL       = "ALL" 
+    FILTER_TYPE_CAN_PASS  = "PASS"
+    FILTER_TYPE_CAN_BLOCK = "BLOCK"
+    FILTER_TYPE_CAN_FLOW  = "FLOW"
+    FILTER_TYPE_J1939_PGN = "PGN"
+
+    FILTER_TYPES = [FILTER_TYPE_ALL, FILTER_TYPE_CAN_PASS, FILTER_TYPE_CAN_BLOCK, FILTER_TYPE_CAN_FLOW, FILTER_TYPE_J1939_PGN]
 
 
     def __init__(self, *args, **kwargs):
         super(STN11XX, self).__init__(*args, **kwargs)
-
-        self._filters = []
 
 
     def set_baudrate(self, baudrate):
@@ -303,6 +304,15 @@ class STN11XX(ELM327):
         # Check that specified baudrate is set
         if kwargs.get("baudrate", None) != None and kwargs["baudrate"] != self._protocol.baudrate:
             raise STN11XXError("Requested baudrate could not be set - be aware that ELM327 protocols does not support custom baudrates")
+
+        # Automatic filtering mode is considered switched on
+        self._runtime_settings["auto_filtering"] = True
+
+        # No custom filters are set
+        self._runtime_settings.pop("can_pass_filters", None)
+        self._runtime_settings.pop("can_block_filters", None)
+        self._runtime_settings.pop("can_flow_control_filters", None)
+        self._runtime_settings.pop("j1939_pgn_filters", None)
 
         return ret
 
@@ -416,74 +426,184 @@ class STN11XX(ELM327):
         return ret
 
 
-    def list_filters(self, type=None):
-        # TODO HN: Rewrite to use self._runtime_settings
+    def auto_filtering(self, enable=None):
 
-        if type != None:
-            type = type.upper()
+        if enable == self._runtime_settings.get("auto_filtering", None):
+            return
 
-        if type and type not in self.FILTER_TYPES:
+        if enable:
+            res = self.send("STFA")
+            if not self._is_ok(res):
+                raise STN11XXError("Failed to enable automatic filtering: {:}".format(res), code=self._last(res))
+
+            logger.info("Automatic filtering enabled")
+
+            # Automatic filtering mode is enabled
+            self._runtime_settings["auto_filtering"] = True
+
+            # All custom filters are cleared
+            self._runtime_settings["can_pass_filters"] = []
+            self._runtime_settings["can_block_filters"] = []
+            self._runtime_settings["can_flow_control_filters"] = []
+            self._runtime_settings["j1939_pgn_filters"] = []
+
+        return self._runtime_settings.get("auto_filtering", None)
+
+
+    def list_filters(self, type="ALL"):
+        ret = []
+
+        type = type.upper()
+        if type not in self.FILTER_TYPES:
             raise ValueError("Unsupported filter type - allowed options are: {:}".format(", ".join(self.FILTER_TYPES)))
 
-        return [f.copy() for f in self._filters if type == None or f["type"] == type]
+        if type == self.FILTER_TYPE_ALL or type == self.FILTER_TYPE_CAN_PASS:
+            ret.extend([{"type": self.FILTER_TYPE_CAN_PASS, "value": f} for f in self._runtime_settings.get("can_pass_filters", [])])
+
+        if type == self.FILTER_TYPE_ALL or type == self.FILTER_TYPE_CAN_BLOCK:
+            ret.extend([{"type": self.FILTER_TYPE_CAN_BLOCK, "value": f} for f in self._runtime_settings.get("can_block_filters", [])])
+
+        if type == self.FILTER_TYPE_ALL or type == self.FILTER_TYPE_CAN_FLOW:
+            ret.extend([{"type": self.FILTER_TYPE_CAN_FLOW, "value": f} for f in self._runtime_settings.get("can_flow_control_filters", [])])
+
+        if type == self.FILTER_TYPE_ALL or type == self.FILTER_TYPE_J1939_PGN:
+            ret.extend([{"type": self.FILTER_TYPE_J1939_PGN, "value": f} for f in self._runtime_settings.get("j1939_pgn_filters", [])])
+
+        return ret
 
 
-    def add_filter(self, type, pattern, mask):
-        # TODO HN: Rewrite to use self._runtime_settings
+    def list_filters_by(self, type):
+        type = type.upper()
 
-        if type != None:
-            type = type.upper()
-
-        cmd = None
-        if type == self.FILTER_TYPE_PASS:
-            cmd = "STFAP"
-        elif type == self.FILTER_TYPE_BLOCK:
-            cmd = "STFAB"
-        elif type == self.FILTER_TYPE_FLOW:
-            cmd = "STFAFC"
+        if type == self.FILTER_TYPE_CAN_PASS:
+            return self._runtime_settings.get("can_pass_filters", [])
+        elif type == self.FILTER_TYPE_CAN_BLOCK:
+            return self._runtime_settings.get("can_block_filters", [])
+        elif type == self.FILTER_TYPE_CAN_FLOW:
+            return self._runtime_settings.get("can_flow_control_filters", [])
+        elif type == self.FILTER_TYPE_J1939_PGN:
+            return self._runtime_settings.get("j1939_pgn_filters", [])
         else:
+            raise ValueError("Unsupported filter type - allowed options are: {:}".format(", ".join(self.FILTER_TYPES[1:])))
+
+
+    def add_filter(self, type, value):
+
+        type = type.upper()
+        if type == self.FILTER_TYPE_CAN_PASS:
+            self.can_pass_filters(add=value)
+        elif type == self.FILTER_TYPE_CAN_BLOCK:
+            self.can_block_filters(add=value)
+        elif type == self.FILTER_TYPE_CAN_FLOW:
+            self.can_flow_control_filters(add=value)
+        elif type == self.FILTER_TYPE_J1939_PGN:
+            self.j1939_pgn_filters(add=value)
+        else:
+            raise ValueError("Unsupported filter type - allowed options are: {:}".format(", ".join(self.FILTER_TYPES[1:])))
+
+
+    def clear_filters(self, type="ALL"):
+
+        type = type.upper()
+        if type not in self.FILTER_TYPES:
             raise ValueError("Unsupported filter type - allowed options are: {:}".format(", ".join(self.FILTER_TYPES)))
 
-        res = self.send("{:} {:},{:}".format(cmd, pattern, mask))
-        if not self._is_ok(res):
-            raise STN11XXError("Failed to add '{:}' filter: {:}".format(type, res), code=self._last(res))
-
-        self._filters.append({
-                "type": type,
-                "pattern": pattern,
-                "mask": mask
-            })
-
-
-    def clear_filters(self, type=None):
-        # TODO HN: Rewrite to use self._runtime_settings
-
-        if type != None:
-            type = type.upper()
-
-        if type and type not in self.FILTER_TYPES:
-            raise ValueError("Unsupported filter type - allowed options are: {:}".format(", ".join(self.FILTER_TYPES)))
-
-        if type == None or type == self.FILTER_TYPE_PASS:
-            res = self.send("STFCP")
+        if type == self.FILTER_TYPE_ALL:
+            res = self.send("STFAC")
             if not self._is_ok(res):
-                raise STN11XXError("Failed to clear '{:}' filters: {:}".format(self.FILTER_TYPE_PASS, res), code=self._last(res))
+                raise STN11XXError("Failed to clear all filters: {:}".format(res), code=self._last(res))
 
-            self._filters = list(filter(lambda f: f["type"] != self.FILTER_TYPE_PASS, self._filters))
+            # Clear all filters
+            self._runtime_settings["can_pass_filters"] = []
+            self._runtime_settings["can_block_filters"] = []
+            self._runtime_settings["can_flow_control_filters"] = []
+            self._runtime_settings["j1939_pgn_filters"] = []
 
-        if type == None or type == self.FILTER_TYPE_BLOCK:
-            res = self.send("STFCB")
+            # Automatic filtering mode is now switched off
+            self._runtime_settings["auto_filtering"] = False
+
+            logger.info("Cleared all filters")
+
+        elif type == self.FILTER_TYPE_CAN_PASS:
+            self.can_pass_filters(clear=True)
+        elif type == self.FILTER_TYPE_CAN_BLOCK:
+            self.can_block_filters(clear=True)
+        elif type == self.FILTER_TYPE_CAN_FLOW:
+            self.can_flow_control_filters(clear=True)
+        elif type == self.FILTER_TYPE_J1939_PGN:
+            self.j1939_pgn_filters(clear=True)
+
+
+    def can_pass_filters(self, clear=False, add=None):
+
+        if clear:
+            try:
+                res = self.send("STFPC")
+            except ELM327Error as err:
+                raise STN11XXError("Unable to clear CAN pass filters: {:}".format(err), code=err.code)
+
             if not self._is_ok(res):
-                raise STN11XXError("Failed to clear '{:}' filters: {:}".format(self.FILTER_TYPE_BLOCK, res), code=self._last(res))
+                raise STN11XXError("Invalid response when clearing CAN pass filters: {:}".format(res), code=self._last(res))
 
-            self._filters = list(filter(lambda f: f["type"] != self.FILTER_TYPE_BLOCK, self._filters))
+            logger.info("Cleared {:} CAN pass filter(s)".format(len(self._runtime_settings.get("can_pass_filters", []))))
 
-        if type == None or type == self.FILTER_TYPE_FLOW:
-            res = self.send("STFCFC")
+            self._runtime_settings["can_pass_filters"] = []
+            # Automatic filtering mode is now switched off
+            self._runtime_settings["auto_filtering"] = False
+
+        if add:
+            add = str(add).replace(" ", "").upper()
+            if not add in self._runtime_settings.get("can_pass_filters", []):
+
+                try:
+                    res = self.send("STFPA{:s}".format(add))
+                except ELM327Error as err:
+                    raise STN11XXError("Unable to add CAN pass filter '{:}': {:}".format(add, err), code=err.code)
+
+                if not self._is_ok(res):
+                    raise STN11XXError("Invalid response when adding CAN pass filter '{:}': {:}".format(add, res), code=self._last(res))
+
+                self._runtime_settings.setdefault("can_pass_filters", []).append(add)
+                # Automatic filtering mode is now switched off
+                self._runtime_settings["auto_filtering"] = False
+
+        return self._runtime_settings.get("can_pass_filters", [])
+
+
+    def can_block_filters(self, clear=False, add=None):
+
+        if clear:
+            try:
+                res = self.send("STFBC")
+            except ELM327Error as err:
+                raise STN11XXError("Unable to clear CAN block filters: {:}".format(err), code=err.code)
+
             if not self._is_ok(res):
-                raise STN11XXError("Failed to clear '{:}' filters: {:}".format(self.FILTER_TYPE_FLOW, res), code=self._last(res))
+                raise STN11XXError("Invalid response when clearing CAN block filters: {:}".format(res), code=self._last(res))
 
-            self._filters = list(filter(lambda f: f["type"] != self.FILTER_TYPE_FLOW, self._filters))
+            logger.info("Cleared {:} CAN block filter(s)".format(len(self._runtime_settings.get("can_block_filters", []))))
+
+            self._runtime_settings["can_block_filters"] = []
+            # Automatic filtering mode is now switched off
+            self._runtime_settings["auto_filtering"] = False
+
+        if add:
+            add = str(add).replace(" ", "").upper()
+            if not add in self._runtime_settings.get("can_block_filters", []):
+
+                try:
+                    res = self.send("STFBA{:s}".format(add))
+                except ELM327Error as err:
+                    raise STN11XXError("Unable to add CAN block filter '{:}': {:}".format(add, err), code=err.code)
+
+                if not self._is_ok(res):
+                    raise STN11XXError("Invalid response when adding CAN block filter '{:}': {:}".format(add, res), code=self._last(res))
+
+                self._runtime_settings.setdefault("can_block_filters", []).append(add)
+                # Automatic filtering mode is now switched off
+                self._runtime_settings["auto_filtering"] = False
+
+        return self._runtime_settings.get("can_block_filters", [])
 
 
     def can_flow_control_filters(self, clear=False, add=None):
@@ -497,7 +617,11 @@ class STN11XX(ELM327):
             if not self._is_ok(res):
                 raise STN11XXError("Invalid response when clearing CAN flow control filters: {:}".format(res), code=self._last(res))
 
+            logger.info("Cleared {:} CAN flow control filter(s)".format(len(self._runtime_settings.get("can_flow_control_filters", []))))
+
             self._runtime_settings["can_flow_control_filters"] = []
+            # Automatic filtering mode is now switched off
+            self._runtime_settings["auto_filtering"] = False
 
         if add:
             add = str(add).replace(" ", "").upper()
@@ -512,8 +636,46 @@ class STN11XX(ELM327):
                     raise STN11XXError("Invalid response when adding CAN flow control filter '{:}': {:}".format(add, res), code=self._last(res))
 
                 self._runtime_settings.setdefault("can_flow_control_filters", []).append(add)
+                # Automatic filtering mode is now switched off
+                self._runtime_settings["auto_filtering"] = False
 
         return self._runtime_settings.get("can_flow_control_filters", [])
+
+
+    def j1939_pgn_filters(self, clear=False, add=None):
+
+        if clear:
+            try:
+                res = self.send("STFPGC")
+            except ELM327Error as err:
+                raise STN11XXError("Unable to clear J1939 PGN filters: {:}".format(err), code=err.code)
+
+            if not self._is_ok(res):
+                raise STN11XXError("Invalid response when clearing J1939 PGN filters: {:}".format(res), code=self._last(res))
+
+            logger.info("Cleared {:} J1939 PGN filter(s)".format(len(self._runtime_settings.get("j1939_pgn_filters", []))))
+
+            self._runtime_settings["j1939_pgn_filters"] = []
+            # Automatic filtering mode is now switched off
+            self._runtime_settings["auto_filtering"] = False
+
+        if add:
+            add = str(add).replace(" ", "").upper()
+            if not add in self._runtime_settings.get("j1939_pgn_filters", []):
+
+                try:
+                    res = self.send("STFPGA{:s}".format(add))
+                except ELM327Error as err:
+                    raise STN11XXError("Unable to add J1939 PGN filter '{:}': {:}".format(add, err), code=err.code)
+
+                if not self._is_ok(res):
+                    raise STN11XXError("Invalid response when adding J1939 PGN filter '{:}': {:}".format(add, res), code=self._last(res))
+
+                self._runtime_settings.setdefault("j1939_pgn_filters", []).append(add)
+                # Automatic filtering mode is now switched off
+                self._runtime_settings["auto_filtering"] = False
+
+        return self._runtime_settings.get("j1939_pgn_filters", [])
 
 
     def can_flow_control_id_pairs(self, clear=False, add=None):
@@ -526,6 +688,8 @@ class STN11XX(ELM327):
 
             if not self._is_ok(res):
                 raise STN11XXError("Invalid response when clearing CAN flow control ID pairs: {:}".format(res), code=self._last(res))
+
+            logger.info("Cleared {:} CAN flow control ID pair(s)".format(len(self._runtime_settings.get("can_flow_control_id_pairs", []))))
 
             self._runtime_settings["can_flow_control_id_pairs"] = []
 
@@ -544,37 +708,6 @@ class STN11XX(ELM327):
                 self._runtime_settings.setdefault("can_flow_control_id_pairs", []).append(add)
 
         return self._runtime_settings.get("can_flow_control_id_pairs", [])
-
-
-    def j1939_pgn_filters(self, clear=False, add=None):
-
-        if clear:
-
-            try:
-                res = self.send("STFPGC")
-            except ELM327Error as err:
-                raise STN11XXError("Unable to clear J1939 PGN filters: {:}".format(err), code=err.code)
-
-            if not self._is_ok(res):
-                raise STN11XXError("Invalid response when clearing J1939 PGN filters: {:}".format(res), code=self._last(res))
-
-            self._runtime_settings["j1939_pgn_filters"] = []
-
-        if add:
-            add = str(add).replace(" ", "").upper()
-            if not add in self._runtime_settings.get("j1939_pgn_filters", []):
-
-                try:
-                    res = self.send("STFPGA{:s}".format(add))
-                except ELM327Error as err:
-                    raise STN11XXError("Unable to add J1939 PGN filter '{:}': {:}".format(add, err), code=err.code)
-
-                if not self._is_ok(res):
-                    raise STN11XXError("Invalid response when adding J1939 PGN filter '{:}': {:}".format(add, res), code=self._last(res))
-
-                self._runtime_settings.setdefault("j1939_pgn_filters", []).append(add)
-
-        return self._runtime_settings.get("j1939_pgn_filters", [])
 
 
     def _manual_protocol(self, ident, verify=False, baudrate=None):
