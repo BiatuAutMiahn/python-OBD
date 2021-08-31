@@ -1113,7 +1113,7 @@ class ELM327(object):
 
                 # If nothing was recieved
                 if not data:
-                    logger.error("No more data received on serial port within timeout of {:d} second(s) - the connection may be unstable due to high baud rate".format(self._port.timeout))
+                    logger.error("No more data received on serial port within timeout of {:} second(s) - maybe ELM327 response timeout is set to a higher value, or the connection itself may be unstable due to high baud rate".format(self._port.timeout))
                     logger.warning("Partial data received until timeout occurred: {:}".format(repr(buffer)))
 
                     # Only break if no interrupt character is pending
@@ -1184,7 +1184,7 @@ class ELM327(object):
         res = self._read_line_buffer.read_until(b"\r")
         if not res:
             if logger.isEnabledFor(logging.DEBUG):
-                logger.debug("No line could be read on serial port within timeout of {:d} second(s)".format(self._port.timeout))
+                logger.debug("No line could be read on serial port within timeout of {:} second(s)".format(self._port.timeout))
 
             return
 
