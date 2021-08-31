@@ -144,6 +144,7 @@ class CANProtocol(Protocol):
 
             # drop frames with no data
             if frame.data_len == 0:
+                logger.warning("Dropping single frame with no data")
                 return False
 
         elif frame.type == self.FRAME_TYPE_FF:
@@ -155,6 +156,7 @@ class CANProtocol(Protocol):
 
             # drop frames with no data
             if frame.data_len == 0:
+                logger.warning("Dropping first frame with no data")
                 return False
 
         elif frame.type == self.FRAME_TYPE_CF:
