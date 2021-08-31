@@ -105,19 +105,19 @@ class HSC_ISO_15765_29bit_250k(CANProtocol):
     def __init__(self, lines_0100):
         CANProtocol.__init__(self, lines_0100)
 
-class HSC_J1939_11bit_250k(CANProtocol):
+class HSC_J1939_11bit_250k(UnknownProtocol):
     NAME = "J1939 (11bit, 250kbps)"
     ID = "41"
     HEADER_BITS = 11
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100)
+        UnknownProtocol.__init__(self, lines_0100)
 
-class HSC_J1939_29bit_250k(CANProtocol):
+class HSC_J1939_29bit_250k(UnknownProtocol):
     NAME = "J1939 (29bit, 250kbps)"
     ID = "42"
     HEADER_BITS = 29
     def __init__(self, lines_0100):
-        CANProtocol.__init__(self, lines_0100)
+        UnknownProtocol.__init__(self, lines_0100)
 
 # Medium Speed CAN
 
