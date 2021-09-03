@@ -736,14 +736,16 @@ class ELM327(object):
         Returns a list of parsed Message objects or raw response lines.
         """
 
-        # Ensure header is set
-        self.set_header(header)
+        if not cmd.startswith("AT"):  # Special commands do not need this (ELM_VERSION, ELM_VOLTAGE)
 
-        # Ensure CAN automatic formatting is enabled
-        self.set_can_auto_format(True)
+            # Ensure header is set
+            self.set_header(header)
 
-        # Ensure responses are turned on
-        self.set_expect_responses(True)
+            # Ensure CAN automatic formatting is enabled
+            self.set_can_auto_format(True)
+
+            # Ensure responses are turned on
+            self.set_expect_responses(True)
 
         lines = self.send(cmd, read_timeout=read_timeout, raw_response=not parse)
 
