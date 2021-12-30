@@ -89,11 +89,13 @@ class OBDCommand():
             return None
 
 
-    def __call__(self, messages):
+    def __call__(self, messages, filtering=True):
 
-        # filter for applicable messages (from the right ECU(s))
-        for_us = lambda m: (self.ecu & m.ecu) > 0
-        messages = list(filter(for_us, messages))
+        if filtering:
+
+            # filter for applicable messages (from the right ECU(s))
+            for_us = lambda m: (self.ecu & m.ecu) > 0
+            messages = list(filter(for_us, messages))
 
         if self.frames != None and self.frames != len(messages):
             if self.strict:
