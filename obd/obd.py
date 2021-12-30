@@ -54,24 +54,24 @@ class OBD(object):
         self.supported_commands = set(commands.base_commands())
         self.fast = fast # global switch for disabling optimizations
         # TODO: Fast mode/last command cache is not always reset - this functionality should be moved to interface or removed completely
-        self.__last_command = b"" # used for running the previous command with a CR
-        self.__frame_counts = {} # keeps track of the number of return frames for each command
+        self._last_command = b"" # used for running the previous command with a CR
+        self._frame_counts = {} # keeps track of the number of return frames for each command
         self.reset_callback = reset_callback
 
         logger.debug("======================= Python-OBD (v%s) =======================" % __version__)
-        self.__connect(interface_cls, portstr, baudrate, timeout=timeout, protocol=protocol, status_callback=status_callback)
+        self._connect(interface_cls, portstr, baudrate, timeout=timeout, protocol=protocol, status_callback=status_callback)
 
         # Try to load the car's supported commands
         if load_commands:
             try:
-                self.__load_commands()
+                self._load_commands()
             except:
                 logger.exception("Unable to load OBD commands")
 
         logger.debug("===================================================================")
 
 
-    def __connect(self, interface_cls, portstr, baudrate, timeout=None, protocol=None, status_callback=None):
+    def _connect(self, interface_cls, portstr, baudrate, timeout=None, protocol=None, status_callback=None):
         """
             Attempts to instantiate and open an ELM327 interface connection object.
         """
@@ -111,7 +111,7 @@ class OBD(object):
             raise OBDError("Failed to connect to interface '{:}' - see log for details".format(interface_cls))
 
 
-    def __load_commands(self):
+    def _load_commands(self):
         """
             Queries for available PIDs, sets their support status,
             and compiles a list of command objects.
@@ -202,7 +202,7 @@ class OBD(object):
 
         # Try to load OBD commands
         if kwargs.get("verify", True):
-            self.__load_commands()
+            self._load_commands()
         else:
             self.supported_commands = set(commands.base_commands())
 
@@ -269,7 +269,7 @@ class OBD(object):
         if logger.isEnabledFor(logging.DEBUG):
             logger.debug("Querying command: %s" % str(cmd))
 
-        cmd_string = self.__build_command_string(cmd)
+        cmd_string = self._build_command_string(cmd)
 
         try:
             messages = self.interface.query(cmd_string, header=header)
@@ -280,12 +280,12 @@ class OBD(object):
             # first check that the current command WASN'T sent as an empty CR
             # (CR is added by the ELM327 class)
             if cmd_string:
-                self.__last_command = cmd_string
+                self._last_command = cmd_string
 
         # if we don't already know how many frames this command returns,
         # log it, so we can specify it next time
-        if cmd not in self.__frame_counts:
-            self.__frame_counts[cmd] = sum([len(m.frames) for m in messages])
+        if cmd not in self._frame_counts:
+            self._frame_counts[cmd] = sum([len(m.frames) for m in messages])
 
         if not messages:
             logger.warning("No valid OBD messages returned")
@@ -340,7 +340,7 @@ class OBD(object):
         finally:
 
             # Remember to update last command
-            self.__last_command = msg_string
+            self._last_command = msg_string
 
         # Format frames if requested
         if format_response:
@@ -368,7 +368,7 @@ class OBD(object):
         finally:
 
             # Remember to update last command
-            self.__last_command = cmd_string
+            self._last_command = cmd_string
 
         return lines
 
@@ -382,8 +382,8 @@ class OBD(object):
             raise OBDError("Not connected to interface")
 
         # Remember to clear
-        self.__last_command = ""
-        self.__frame_counts = {}
+        self._last_command = ""
+        self._frame_counts = {}
 
         if not mode or mode.lower() == "warm":
             self.interface.warm_reset()
@@ -399,7 +399,7 @@ class OBD(object):
                 logger.exception("Failed to trigger reset callback")
 
 
-    def __build_command_string(self, cmd):
+    def _build_command_string(self, cmd):
         """ assembles the appropriate command string """
         cmd_string = cmd.command
 
@@ -410,12 +410,12 @@ class OBD(object):
         # if we know the number of frames that this command returns,
         # only wait for exactly that number. This avoids some harsh
         # timeouts from the ELM, thus speeding up queries.
-        elif self.fast and cmd.fast and (cmd in self.__frame_counts):
-            cmd_string += str(self.__frame_counts[cmd]).encode()
+        elif self.fast and cmd.fast and (cmd in self._frame_counts):
+            cmd_string += str(self._frame_counts[cmd]).encode()
 
         # if we sent this last time, just send a CR
         # (CR is added by the ELM327 class)
-        if self.fast and (cmd_string == self.__last_command):
+        if self.fast and (cmd_string == self._last_command):
             cmd_string = b""
 
         return cmd_string
