@@ -242,7 +242,7 @@ class ELM327(object):
             (re.compile("^ATR(?P<value>[0-1])$", re.IGNORECASE),          lambda val: self.set_expect_responses(int(val))),
             (re.compile("^ATD$", re.IGNORECASE),                          self.restore_defaults),
             (re.compile("^ATWS$", re.IGNORECASE),                         self.warm_reset),
-            (re.compile("^ATZ$", re.IGNORECASE),                          self.warm_reset),  # Do not perform hard reset
+            (re.compile("^ATZ$", re.IGNORECASE),                          self.warm_reset),  # NOTE: Do not perform hard reset
             (re.compile("^ATSH(?P<value>[0-9A-F]+)$", re.IGNORECASE),     self.set_header),
             (re.compile("^ATSP(?P<value>[0-9A-C])$", re.IGNORECASE),      lambda val: self.set_protocol(None if val == "0" else val, verify=False)),
             (re.compile("^ATST(?P<value>[0-9A-F]{1,2})$", re.IGNORECASE), lambda val: self.set_response_timeout(int(val, 16))),
@@ -367,7 +367,7 @@ class ELM327(object):
         self._status = OBDStatus.NOT_CONNECTED
         
         if self._port is not None:
-            logger.info("Closing serial connection")
+            logger.info("Closing port connection")
 
             self._port.close()
 
@@ -382,8 +382,7 @@ class ELM327(object):
 
         self.close()
 
-        self.open(
-            self._port.baudrate if self._port else None,
+        self.open(self._port.baudrate if self._port else None,
             protocol={
                 "id": getattr(self._protocol, "ID", None),
                 "baudrate": getattr(self._protocol, "baudrate", None)
@@ -401,7 +400,7 @@ class ELM327(object):
             logger.info("Default settings restored")
 
             # Clear any cached runtime settings
-            self._runtime_settings = {}
+            self._runtime_settings.clear()
 
 
     def warm_reset(self):
@@ -414,7 +413,7 @@ class ELM327(object):
         finally:
 
             # Clear any cached runtime settings
-            self._runtime_settings = {}
+            self._runtime_settings.clear()
 
 
     def reset(self):
@@ -423,6 +422,10 @@ class ELM327(object):
         """
 
         self.send("ATZ")
+
+        # Clear any cached runtime settings
+        self._runtime_settings.clear()
+
         self.reopen()
 
 
